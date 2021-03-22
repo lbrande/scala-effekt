@@ -45,6 +45,15 @@ import scala.jdk.CollectionConverters._
         prog(await)
     }
 
+    def awaitAtMost[R, E](atMost: Duration) (prog: (await: Await_) => R / (await.effect & E)): R / E = handle { scope =>
+        val await = new Await_ {
+            type effect = scope.effect
+            def apply[T](fut: Future[T]) = scope.switch { resume =>
+                resume(result(fut, atMost)) }
+        }
+        prog(await)
+    }
+
     def asyncMap[R, E, T](f: T => T)(prog: (async: Async[T]) => R / (async.effect & E)): R / E = handle { scope =>
         val async = new Async[T] {
             type effect = scope.effect
@@ -64,9 +73,9 @@ import scala.jdk.CollectionConverters._
     }
 
     def readAll(async: Async[String], await: Await[String],
-                paths: List[Path]): String / (async.effect & await.effect) = paths match {
+            paths: List[Path]): String / (async.effect & await.effect) = paths match {
         case head :: tail => for {
-            fut <- async { Files.readString(head) }
+            fut <- async { Files readString head }
             tail <- readAll(async, await, tail)
             head <- await(fut)
         } yield head + tail
@@ -74,7 +83,7 @@ import scala.jdk.CollectionConverters._
     }
 
     {
-        val paths = Files.walk(Path.of("./src")).iterator.asScala.toList filter (!Files.isDirectory(_))
+        val paths = Files.walk(Path of "./src").iterator.asScala.toList filter (!Files.isDirectory(_))
         val keyword = "def"
         val res = run {
             asyncMap ((s: String) => (s.lines.iterator.asScala filter (_.contains(keyword))) mkString("\n")) { async =>
@@ -88,33 +97,34 @@ import scala.jdk.CollectionConverters._
     }
 
     def getAndWrite(async: Async_, await: Await_, 
-                    requests: List[(URI, Path)]): Unit / (async.effect & await.effect) = for {
+            requests: List[(URI, Path)]): Unit / (async.effect & await.effect) = for {
         fut <- getAndWriteHelper(async, await, requests)
         _ <- await(fut)
     } yield ()
 
     def getAndWriteHelper(async: Async_, await: Await_, 
-                    requests: List[(URI, Path)]): Future[Unit] / (async.effect & await.effect) = requests match {
+            requests: List[(URI, Path)]): Future[Unit] / (async.effect & await.effect) = requests match {
         case (uri, path) :: tail =>
             val request = HttpRequest.newBuilder.uri(uri).build
             val handler =  HttpResponse.BodyHandlers.ofByteArray
             for {
-                fut <- async { HttpClient.newHttpClient.send(request, handler) }
+                fut <- async { HttpClient.newHttpClient send(request, handler) }
                 tail <- getAndWriteHelper(async, await, tail)
                 response <- await(fut)
-                fut <- async { Files.write(path, response.body) }
+                fut <- async { Files write(path, response.body) }
             } yield fut flatMap (_ => tail)
-        case Nil => pure(Future.successful(()))
+        case Nil => pure(Future successful ())
     }
 
     {
-        val uris = List.fill (8) { URI.create("https://www.google.com") }
-        val paths = List(Path.of("./a0"), Path.of("./a1"), Path.of("./a2"), Path.of("./a3"),
-                        Path.of("./a4"), Path.of("./a5"), Path.of("./a6"), Path.of("./a7"))
+        val uris = List.fill (8) { URI create "https://www.google.com" }
+        val paths = List(Path of "./a0", Path of "./a1", Path of "./a2", Path of "./a3",
+                        Path of "./a4", Path of "./a5", Path of "./a6", Path of "./a7")
+        val requests = uris zip paths 
         val res = run {
             async { async =>
                 await { await =>
-                    getAndWrite(async, await, uris zip paths)
+                    getAndWrite(async, await, requests)
                 }
             }
         };
