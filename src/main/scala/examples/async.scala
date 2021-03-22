@@ -123,7 +123,7 @@ import scala.jdk.CollectionConverters._
         val requests = uris zip paths 
         val res = run {
             async { async =>
-                await { await =>
+                awaitAtMost (Duration("500ms")) { await =>
                     getAndWrite(async, await, requests)
                 }
             }
