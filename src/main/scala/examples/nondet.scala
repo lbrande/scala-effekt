@@ -58,6 +58,7 @@ object nondet extends App {
     r <- amb.flip()
   } yield if (r) "heads" else "tails"
 
+  // res = List("heads", "tails")
   val res = run {
     collect { amb =>
       coinFlip(amb)
