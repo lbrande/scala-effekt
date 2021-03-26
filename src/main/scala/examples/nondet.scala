@@ -53,4 +53,16 @@ object nondet extends App {
       }                     // Control[Option[String], amb.effect]
     }                       // Control[List[Option[String]], Pure]
   }                         // List[Option[String]]
+
+  def coinFlip(amb: Amb): String / amb.effect = for {
+    r <- amb.flip()
+  } yield if (r) "heads" else "tails"
+
+  val res = run {
+    collect { amb =>
+      coinFlip(amb)
+    }
+  }
+
+  println(res)
 }

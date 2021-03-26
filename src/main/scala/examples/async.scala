@@ -84,9 +84,8 @@ import scala.jdk.CollectionConverters._
 
     {
         val paths = Files.walk(Path of "./src").iterator.asScala.toList filter (!Files.isDirectory(_))
-        val keyword = "def"
         val res = run {
-            asyncMap ((s: String) => (s.lines.iterator.asScala filter (_.contains(keyword))) mkString("\n")) { async =>
+            asyncMap (identity[String]) { async =>
                 awaitMap (identity[String]) { await =>
                     readAll(async, await, paths)
                 }
@@ -123,7 +122,7 @@ import scala.jdk.CollectionConverters._
         val requests = uris zip paths 
         val res = run {
             async { async =>
-                awaitAtMost (Duration("500ms")) { await =>
+                await { await =>
                     getAndWrite(async, await, requests)
                 }
             }
